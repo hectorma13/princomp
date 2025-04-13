@@ -1,5 +1,5 @@
 # AUTOR: Héctor Martín Álvarez
-# FECHA ÚLTIMA MODIFICACIÓN: 26/03/2025
+# FECHA ÚLTIMA MODIFICACIÓN: 09/04/2025
 
 # #include <iostream>
 # #include <iomanip>
@@ -227,6 +227,43 @@
 #       continue;
 #     }
 
+#     // Opción 10  //////////////////////////////////////////////////////////
+#     // Intercambiar columnas seleccionadas solo si uno mayor que otro
+#     if(opcion == 10) {
+#       std::cout << "Indice de primera columna: ";
+#       int indCol1;
+#       std::cin >> indCol1;
+#       if ((indCol1 < 0) || (indCol1 >= numCol)){
+#         std::cout <<
+#           "Error: dimension incorrecta.  Numero de columna incorrecto\n";
+#         continue;  // volvemos al principio del bucle
+#       }
+#       std::cout << "Indice de segunda columna: ";
+#       int indCol2;
+#       std::cin >> indCol2;
+#       if ((indCol2 < 0) || (indCol2 >= numCol)){
+#         std::cout <<
+#           "Error: dimension incorrecta.  Numero de columna incorrecto\n";
+#         continue;  // volvemos al principio del bucle
+#       }
+#       for(int f = 0; f < numFil; f++) {
+#         float valor1 = datos[f * numCol + indCol1];
+#         float valor2 = datos[f * numCol + indCol2];
+#         std::cout << "En fila " << f;
+#         if (valor1 > valor2) {
+#           std::cout << " intercambio de " << valor1
+#             << " por " << valor2;
+#           datos[f * numCol + indCol1] = valor2;
+#           datos[f * numCol + indCol2] = valor1;
+#         } else {
+#           std::cout << " no intercambio";
+#         }
+#         std::cout << '\n';
+#       }
+#       std::cout << "Termina opción 10\n";
+#       continue;
+#     }
+
 #     // Opción Incorrecta ///////////////////////////////////////////////////
 #     std::cout << "Error: opcion incorrecta\n";
 #   }
@@ -295,6 +332,7 @@ menu:   .ascii "(0) Terminar el programa\n"
         .ascii "(2) Definir matriz 7\n"
         .ascii "(3) Cambiar un valor de la matriz\n"
         .ascii "(7) Contar valores superiores a un umbral\n"
+	.ascii "(10) Intercambia columnas si mayor\n"
         .asciiz "\nIntroduce opción elegida: ";
 petmat: .asciiz "\nElije la matriz de trabajo (1..7): "
 errmat: .asciiz "Numero de matriz de trabajo incorrecto\n"
@@ -315,6 +353,15 @@ petum:  .asciiz "Introduce el umbral: "
 umbstr: .asciiz "\nNumero de valores superiores al umbral: "
 erropc: .asciiz "Error: opcion incorrecta\n"
 finstr: .asciiz "\nTermina el programa\n"
+
+# Para la opción 10
+strIndiceCol1:	.asciiz	"Indice de primera columna: "
+strIndiceCol2:	.asciiz	"Indice de segunda columna: "
+strEnFila:	.asciiz	"En fila "
+strInterc:	.asciiz	" intercambio de "
+strPor:		.asciiz	" por "
+strNoInterc:	.asciiz	" no intercambio"
+strTermina10:	.asciiz	"Termina opción 10\n"
 
 	.text
 #####################################################################
@@ -357,6 +404,17 @@ finstr: .asciiz "\nTermina el programa\n"
 # numFil -> $s1
 # valor -> $f22
 # f * numCol + c -> $t0
+
+# OPCIÓN 10:
+# indCol1 -> $s6
+# indCol2 -> $s7
+# f -> $s4
+# c -> $s5
+# valor1 -> $f23
+# valor2 -> $f24
+
+# El registro $t3 ha sido empleado para el cálculo de índices,
+# añadiendo los cambios de las operaciones a ese mismo registro
 #####################################################################
 
 # int main() {
@@ -905,6 +963,173 @@ for_fila_op7_fin:
 
 #     } ////////////////////////////////////////////////////////// de opcion_7
 if_opc_7_fin:
+
+#     // Opción 10  //////////////////////////////////////////////////////////
+#     // Intercambiar columnas seleccionadas solo si uno mayor que otro
+#     if(opcion == 10) {
+if_opc_10:
+	bne	$t1,10,if_opc_10_fin
+
+#       std::cout << "Indice de primera columna: ";
+	li	$v0,4
+	la	$a0,strIndiceCol1
+	syscall
+
+#       int indCol1;
+#       std::cin >> indCol1;
+	li	$v0,5
+	syscall
+	move	$s6,$v0
+
+#       if ((indCol1 < 0) || (indCol1 >= numCol)){
+if_indCol1:
+	blt	$s6,$zero,if_indCol1_dentro
+	bge	$s6,$s2,if_indCol1_dentro
+	b	if_indCol1_fin
+
+if_indCol1_dentro:
+#         std::cout <<
+#           "Error: dimension incorrecta.  Numero de columna incorrecto\n";
+	li	$v0,4
+	la	$a0,errcol
+	syscall
+
+#         continue;  // volvemos al principio del bucle
+	b	while_true
+
+#       }
+if_indCol1_fin:
+
+#       std::cout << "Indice de segunda columna: ";
+	li	$v0,4
+	la	$a0,strIndiceCol2
+	syscall
+
+#       int indCol2;
+#       std::cin >> indCol2;
+	li	$v0,5
+	syscall
+	move	$s7,$v0
+
+#       if ((indCol2 < 0) || (indCol2 >= numCol)){
+if_indCol2:
+	blt	$s7,$zero,if_indCol2_dentro
+	bge	$s7,$s2,if_indCol2_dentro
+	b	if_indCol2_fin
+
+if_indCol2_dentro:
+
+#         std::cout <<
+#           "Error: dimension incorrecta.  Numero de columna incorrecto\n";
+	li	$v0,4
+	la	$a0,errcol
+	syscall
+
+#         continue;  // volvemos al principio del bucle
+	b	while_true
+
+#       }
+if_indCol2_fin:
+
+#       for(int f = 0; f < numFil; f++) {
+	move	$s4,$zero
+
+for_fila_op10:
+	bge	$s4,$s1,for_fila_op10_fin
+
+#         float valor1 = datos[f * numCol + indCol1];
+	mul	$t3,$s4,$s2	# f * numCol 
+	add	$t3,$t3,$s6	# f * numCol  + indCol1
+	mul	$t3,$t3,sizeF	# (indFil * numCol  + indCol1) * sizeF
+	add	$t3,$t3,$s3 	# (indFil * numCol  + indCol1) * sizeF + dirBase
+	l.s	$f23,0($t3)
+
+#         float valor2 = datos[f * numCol + indCol2];
+	mul	$t3,$s4,$s2	# f * numCol 
+	add	$t3,$t3,$s7	# f * numCol  + indCol2
+	mul	$t3,$t3,sizeF	# (indFil * numCol  + indCol2) * sizeF
+	add	$t3,$t3,$s3 	# (indFil * numCol  + indCol2) * sizeF + dirBase
+	l.s	$f24,0($t3)
+
+#         std::cout << "En fila " << f;
+	li	$v0,4
+	la	$a0,strEnFila
+	syscall
+
+	li	$v0,1
+	move	$a0,$s4
+	syscall
+
+#         if (valor1 > valor2) {
+if_valor1_2:
+	c.le.s	$f23,$f24
+	bc1t	if_valor1_2_else
+
+#           std::cout << " intercambio de " << valor1
+	li	$v0,4
+	la	$a0,strInterc
+	syscall
+
+	li	$v0,2
+	mov.s	$f12,$f23
+	syscall
+
+#             << " por " << valor2;
+	li	$v0,4
+	la	$a0,strPor
+	syscall
+
+	li	$v0,2
+	mov.s	$f12,$f24
+	syscall
+
+#           datos[f * numCol + indCol1] = valor2;
+	mul	$t3,$s4,$s2	# f * numCol 
+	add	$t3,$t3,$s6	# f * numCol  + indCol1
+	mul	$t3,$t3,sizeF	# (indFil * numCol  + indCol1) * sizeF
+	add	$t3,$t3,$s3 	# (indFil * numCol  + indCol1) * sizeF + dirBase
+	s.s	$f24,0($t3)
+
+#           datos[f * numCol + indCol2] = valor1;
+	mul	$t3,$s4,$s2	# f * numCol 
+	add	$t3,$t3,$s7	# f * numCol  + indCol2
+	mul	$t3,$t3,sizeF	# (indFil * numCol  + indCol2) * sizeF
+	add	$t3,$t3,$s3 	# (indFil * numCol  + indCol2) * sizeF + dirBase
+	s.s	$f23,0($t3)
+
+	b	if_valor1_2_fin
+#         } else {
+if_valor1_2_else:
+
+#           std::cout << " no intercambio";
+	li	$v0,4
+	la	$a0,strNoInterc
+	syscall
+
+#         }
+if_valor1_2_fin:
+
+#         std::cout << '\n';
+	li	$v0,11
+	li	$a0,10		# Código ASCII de "\n"
+	syscall
+
+	addi	$s4,1
+	b	for_fila_op10
+#       }
+
+for_fila_op10_fin:
+
+#       std::cout << "Termina opción 10\n";
+	li	$v0,4
+	la	$a0,strTermina10
+	syscall
+
+#       continue;
+	b	while_true
+
+#     } //////////////////////////////////////////////// fin de opcion 10
+if_opc_10_fin:
 
 
 opc_incorrecta:
